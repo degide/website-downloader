@@ -35,98 +35,111 @@
             </div>
             <div class="h-full bg-black min-h-[600px] mt-4 p-4">
                 <c:catch var ="e">
-                    <%
-                        DownloadDTO urlDTO = (DownloadDTO) request.getAttribute("dto");
-                        URL website = new URL(urlDTO.getUrl());
-                    %>
                     <%!
                         boolean isExtLinkValid (String url){
                             if(url.startsWith("//") || url.startsWith("#") || url.trim().contains("javascript:void(0)")) return false;
                             return true;
                         }
 
-                        UrlDTO downloadLink(URL website, String parentURL, String url, String attrUrl){
+                        UrlDTO downloadLink(String url){
                             UrlDTO dto = new UrlDTO(null, url, 0);
-                            String folder = "downloads/"+website.getAuthority();
 
                             try{
-                                URL extWebsiteURL = new URL(url);
-                                String indexFile;
-                                if (website.getPath().split("/")[extWebsiteURL.getPath().split("/").length - 1].length() == 0) {
-                                    indexFile = "downloads/" + extWebsiteURL.getAuthority() + "/index.html";
-                                } else {
-                                    indexFile = "downloads/" + extWebsiteURL.getAuthority() + "/" + extWebsiteURL.getPath().split("/")[extWebsiteURL.getPath().split("/").length - 1]; //
+                                URL extURL = new URL(url);
+                                String fileToDownload;
+                                String[] items = extURL.getFile().split("/");
+                                if(items.length > 0 && items[items.length-1].contains(".")){
+                                	fileToDownload = "downloads/"+extURL.getAuthority()+extURL.getPath();
+                                }else{
+                                	fileToDownload = "downloads/"+extURL.getAuthority()+extURL.getPath()+"/index.html";
                                 }
-                                ReadableByteChannel rbc = Channels.newChannel(extWebsiteURL.openStream());
-                                File downloadsFolder = new File("downloads/" + extWebsiteURL.getAuthority());
-                                if (!downloadsFolder.exists()) {
-                                    FileUtils.forceMkdir(downloadsFolder);
+                                ReadableByteChannel rbc = Channels.newChannel(extURL.openStream());
+                                File downloadedFile = new File(fileToDownload);
+                                if(!downloadedFile.exists()){
+                                	downloadedFile.getParentFile().mkdirs(); 
+                                	downloadedFile.createNewFile();
                                 }
-                                FileOutputStream fos = new FileOutputStream(indexFile);
+                                FileOutputStream fos = new FileOutputStream(fileToDownload);
                                 fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
-
-                                File indexFileRef = new File(indexFile);
-                                dto.setSize(indexFileRef.length()/1024);
-                                dto.setName(extWebsiteURL.getAuthority());
+        						fos.close();
+                                dto.setSize(downloadedFile.length()/1024);
+                                dto.setName(extURL.getAuthority());
                             }catch (Exception e){
                                 dto.setName(e.getMessage());
-                                return null;
                             }
 
                             return dto;
                         }
                     %>
-                    <p>Website URL: <span class="text-yellow-500"><%= urlDTO.getUrl() %></span></p>
+                    <% DownloadDTO urlDTO = (DownloadDTO) request.getAttribute("dto"); %>
+                    	<p class="text-blue-500 font-bold">Downloading site....</p>
+                    	<p>Website URL: <span class="text-yellow-500"><%= urlDTO.getUrl() %></span></p>
                     <%
-                        String indexFile;
-                        if(website.getPath().split("/").length == 0){
-                            indexFile = "downloads/"+website.getAuthority()+"/index.html";
+	                    
+	                    URL website = new URL(urlDTO.getUrl());
+                        String fileToDownload;
+                        if(!website.getFile().contains(".")){
+                        	fileToDownload = "downloads/"+website.getAuthority()+website.getPath()+"/index.html";
                         }else{
-                            indexFile = "downloads/"+website.getAuthority()+"/"+website.getPath();
+                        	fileToDownload = "downloads/"+website.getAuthority()+website.getPath();
                         }
-                        ReadableByteChannel rbc = Channels.newChannel(website.openStream());
-                        File downloadsFolder = new File("downloads/"+website.getAuthority());
-                        if(!downloadsFolder.exists()){
-                            FileUtils.forceMkdir(downloadsFolder);
+                        File downloadedFile = new File(fileToDownload);
+                        if(!downloadedFile.exists()){
+                        	downloadedFile.getParentFile().mkdirs(); 
+                        	downloadedFile.createNewFile();
                         }
-                        FileOutputStream fos = new FileOutputStream(indexFile);
-                        fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
-
-                        File indexFileRef = new File(indexFile);
-
+                        //ReadableByteChannel rbc = Channels.newChannel(website.openStream());
+                        //FileOutputStream fos = new FileOutputStream(fileToDownload);
+                        //fos.getChannel().transferFrom(rbc, 0, Long.MAX_VALUE);
+						//fos.close();
+						//rbc.close();
                         %>
-                            <p>Index file size: <span class="text-yellow-500"><%= indexFileRef.length()/1024 %> Kb</span></p>
-                            <h1 class="font-bold mt-4">WEBSITE LINKS</h1>
+                            <p>File size: <span class="text-yellow-500"><%= downloadedFile.length()/1024 %> Kb</span></p>
+                            <p class="font-bold mt-4 mb-2 text-green-500">Downloading external links...</p>
                         <%
 
                         ArrayList<UrlDTO> links = new ArrayList<>();
                         Document doc = Jsoup.connect(urlDTO.getUrl()).get();
                         Elements linksElements = doc.getElementsByAttribute("href");
-
+                        int i = 1;
                         for(Element link: linksElements){
                             if(!isExtLinkValid(link.attr("href"))) continue;
                             String url = link.attr("href");
-                            if(website.getPath().split("/").length == 0 && !url.startsWith("https") && !url.startsWith("http")) {
-                                url = urlDTO.getUrl()+"/"+ link.attr("href");
+                            if(!url.startsWith("https") && !url.startsWith("http")) {
+                                url = website.getProtocol()+"://"+website.getAuthority();
+                                String[] items = website.getFile().split("/");
+                                if(items.length > 0 && items[items.length-1].contains(".")){
+                                	items[items.length-1] = "";
+                                	url = url+"/"+String.join("/", items)+"/"+link.attr("href");
+                                }else{
+                                	url = url+"/"+ link.attr("href");
+                                }
                             }else{
                                 // we can comment this if we don't want to download other extrenal sites too'
-                                continue;
+                                url = null;
                             }
+                            if(url==null) continue;
                             url = url.replaceAll("(?<!(http:|https:))/+", "/");
-
-
-                                UrlDTO downloadedUrl = downloadLink(website, urlDTO.getUrl(), url, link.attr("href"));
-//                                if(downloadedUrl == null){
-//                                    continue;
-//                                }
-//                                links.add(downloadedUrl);
+                            //url = url.replace(new URL(url).getQuery(), "");
+	                        %> 
+	                        	<p class='mt-2 text-white'>Downloading link: <span><%= i %></span></p>
+                            <%
+                            UrlDTO downloadedUrl = downloadLink(url);
+                            if(downloadedUrl.getSize() == 0){
+                            	%>
+                            		<p class='mt-2 text-red-500'>Download failed.</p>
+                            	<%
+                            }else{
+                            	links.add(downloadedUrl);
                                 %>
-                                    <div class="w-full mt-2">
+                                    <div class="w-full">
                                         <p>Text: <span class="text-blue-500 font-bold"><%= link.text() %></span></p>
-<%--                                        <p>Size: <span class="text-blue-500 font-bold"><%= downloadedUrl.getSize() %></span></p>--%>
+                                        <p>File size: <span class="text-blue-500 font-bold text-green-500"><%= downloadedUrl.getSize() %></span></p>
                                         <p>URL: <span class="text-white"><%= url %></span></p>
                                     </div>
                                 <%
+                            }
+                            i++;
                         }
                     %>
                 </c:catch>
