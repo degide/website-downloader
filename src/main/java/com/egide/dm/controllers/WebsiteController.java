@@ -1,6 +1,7 @@
 package com.egide.dm.controllers;
 
 import com.egide.dm.dto.DownloadDTO;
+import com.egide.dm.models.Website;
 import com.egide.dm.services.WebsiteService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -26,6 +27,11 @@ public class WebsiteController {
     public String downloadSite(@ModelAttribute("data") DownloadDTO data, Model model){
         model.addAttribute("dto", data);
         return "download";
+    }
+
+    @PostMapping("/save")
+    public Website save(@RequestBody() Website data){
+        return null;
     }
 
     @GetMapping("/downloaded-websites")
