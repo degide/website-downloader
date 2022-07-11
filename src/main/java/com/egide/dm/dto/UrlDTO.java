@@ -3,6 +3,7 @@ package com.egide.dm.dto;
 public class UrlDTO {
     private String name;
     private String url;
+    private long elapsed_time;
     private long size;
 
     public UrlDTO(String name, String url, int size) {
@@ -33,5 +34,13 @@ public class UrlDTO {
 
     public void setSize(long size) {
         this.size = size;
+    }
+
+    public long getElapsed_time() {
+        return elapsed_time;
+    }
+
+    public void setElapsed_time(long elapsed_time) {
+        this.elapsed_time = elapsed_time;
     }
 }
